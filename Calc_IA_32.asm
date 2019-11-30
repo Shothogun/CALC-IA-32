@@ -37,6 +37,12 @@ section .bss
 NAME                  resb        30
 DEBUG                 resd        1
 
+BUFFER32                resb        11
+BUFFER32_SIZE           EQU 11
+
+BUFFER64                resb        21
+BUFFER64_SIZE           EQU 21
+
 section .text
 _start:
 ; Ask user name
@@ -57,15 +63,15 @@ call Read_String
 add esp, 4 
 
 ; Ask user name
-push NAME
-push NAME_SIZE
-call Print_String
-add esp, 8  
+; push NAME
+; push NAME_SIZE
+; call Print_String
+; add esp, 8  
 
-push NL
-push NL_SIZE
-call Print_String
-add esp, 8
+; push NL
+; push NL_SIZE
+; call Print_String
+; add esp, 8
 
 ; Hello Message
 push hello
@@ -194,3 +200,74 @@ Print_int:
   popa
   leave
   ret
+
+;  ========= READ INT 32 FUNCTION ========================
+;  ==  Params:                                          ==
+;  ==                                                   ==
+;  =======================================================
+
+Read_Int32:
+  enter 0,0
+  push ebx
+  push ecx
+  push edx
+  push edi
+
+  mov eax, 3
+  mov ebx, 0
+  mov ecx, BUFFER32
+  mov edx, BUFFER32_SIZE
+  int 80h
+
+  xor ecx, ecx
+  xor eax, eax
+  mov ebx, BUFFER32
+
+RI32_Conv_Loop:
+  ; Check if it's a "\n"
+  mov dl, 0x0a
+  cmp dl, [ebx + ecx]
+  je RI32_Cont
+  ; Multiplies by 10
+  push eax
+  shl eax, 3
+  add eax, [esp]
+  add eax, [esp]
+  ; Check if it's a negative sign
+  mov dl, 0x2d
+  cmp dl, [ebx + ecx]
+  je RI32_Neg_Signal
+  ; Convert ASCII to int
+  sub edx, edx
+  mov dl, [ebx + ecx]
+  sub edx, 0x30
+  add eax, edx
+RI32_Neg_Signal:
+  inc ecx
+  jmp RI32_Conv_Loop
+RI32_Cont:
+  ; Check if it's a negative number
+  mov dl, 0x2d
+  cmp byte dl, [ebx]
+  jne RI32_Positive
+  push eax
+  xor eax, eax
+  sub eax, [esp]
+  add esp, 4
+RI32_Positive:
+  pop edi
+  pop edx
+  pop ecx
+  pop ebx
+  leave
+  ret
+
+;  ========= PRINT INT 32 FUNCTION =======================
+;  ==  Params:                                          ==
+;  ==                                                   ==
+;  =======================================================
+
+;  ========= PRINT INT 64 FUNCTION =======================
+;  ==  Params:                                          ==
+;  ==                                                   ==
+;  =======================================================
