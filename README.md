@@ -25,4 +25,4 @@ At terminal, at the same directory from the project, type:
 
 ## Link
 
-> $ ld -m elf i386 -o Calc_IA_32 Calc_IA_32.o
+> $ ld -m elf_i386 -o Calc_IA_32 Calc_IA_32.o
