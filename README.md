@@ -13,6 +13,13 @@ All possible operations are:
 
 After input two parameters (signed integers), the program will output the result and wait for the user's command by clicking ENTER, to return back at the main menu.
 
+## Members
+
+Member                     | Univeristy Id
+---------------------------|------------------
+Otho Teixeira Komatsu      | 170020142
+Danilo Inácio dos S. Silva | 170031861
+
 ## Details
 
 This project was developed in Linux distro Ubuntu 18.04 LTS, using Intel syntax and NASM compiler.

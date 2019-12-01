@@ -1,30 +1,6 @@
 ;  ============== Useful Macros ==================
 ;  ===============================================
 
-; Performs an integer division by 10 using subtractions.
-; The first argument is the dividend and this is where the quotient is stored.
-; In the second argument the rest of the division is stored.
-
-%macro Div10 2
-  push ecx
-  xor ecx, ecx
-
-D10_Sub_Loop:
-  cmp %2, 10
-  jl D10_Result
-
-D10_Sub:
-  sub %2, 10
-  inc ecx
-  cmp %2, 0
-  jnz D10_Sub_Loop
-
-D10_Result:  
-  mov %1, %2
-  mov %2, ecx
-  pop ecx
-%endmacro
-
 ; Ask for two arguments for user and store in parameters 1 and 2
 
 %macro ReadOp 2
@@ -166,18 +142,8 @@ _start:
   call Read_String
   add esp, 4 
 
-  ; Ask user name
-  ; push NAME
-  ; push NAME_SIZE
-  ; call Print_String
-  ; add esp, 8  
-
-  ; push NL
-  ; push NL_SIZE
-  ; call Print_String
-  ; add esp, 8
-
   ; Hello Message
+  NwLine
   push hello
   push hello_size
   call Print_String
@@ -349,36 +315,9 @@ Finish_Read_String:
   leave
   ret
 
-;  ========= PRINT INT FUNCTION ==========================
-;  ==  Params:                                          ==
-;  ==   1. INT address input beginning address(without  ==
-;  ==      newline)                                     ==
-;  =======================================================
-; Print_int:
-;   enter 0,0
-;   pusha
-
-;   ; EAX =====> Bytes from number(64 bits)
-;   ; EBX =====> Pointer to the number bytes
-;   ; ECX =====> Value at the pointer
-;   mov eax,7
-;   mov ebx, PRINT_INT
-
-;   ; Gets the first MST byte
-;   mov cl,[ebx]
-
-
-;   ; Check signal
-  
-
-;   ; Convert Binary to ASCII
-;   popa
-;   leave
-;   ret
-
 ;  ========= READ INT 32 FUNCTION ========================
-;  ==  Params:                                          ==
-;  ==                                                   ==
+;  ==  Return:                                          ==
+;  ==   1. INT 32 value (EAX)                           ==
 ;  =======================================================
 
 Read_Int32:
@@ -439,7 +378,7 @@ RI32_Positive:
 
 ;  ========= PRINT INT 32 FUNCTION =======================
 ;  ==  Params:                                          ==
-;  ==  1.INT 32 value                                   ==
+;  ==   1. INT 32 value                                 ==
 ;  =======================================================
 
 Print_Int32:
@@ -484,7 +423,12 @@ PI32_Positive:
 
 PI32_Conv_Loop:
 
-  Div10 edx, eax
+  xor edx, edx
+  push ebx
+  mov ebx, 10
+  div ebx
+  pop ebx
+
   ; Checks if the quotient is 0
   cmp eax, 0
   jne PI32_Cont
@@ -532,7 +476,7 @@ PI32_Print:
 
 ;  ========= PRINT INT 64 FUNCTION =======================
 ;  ==  Params:                                          ==
-;  ==  1.INT64 value                                    ==
+;  ==   1. INT64 value                                  ==
 ;  =======================================================
 
 Print_Int64:
@@ -555,7 +499,13 @@ Print_Int64:
   jne PI64_Negative
   mov eax, N64_L
   cmp eax, 0
-  je PI64_Cont3
+  jne PI64_Negative
+  mov dl, 0
+  add dl, 0x30
+  mov byte [ebx], dl
+  mov dl, [ebx]
+  inc ecx
+  jmp PI64_Cont3
 PI64_Negative:  
   mov eax, N64_H
   test eax, 0x80000000
@@ -643,7 +593,9 @@ PI64_Print:
 
 ;  ========= CONV NEG TO POS FUNCTION ====================
 ;  ==  Params:                                          ==
-;  ==  1.Negativ INT64 value                            ==
+;  ==   1. Negative INT64 value                         ==
+;  ==  Return:                                          ==
+;  ==   1. Positive INT64 value  (EDX:EAX)              ==
 ;  =======================================================
 
 ConvN2P64: 
