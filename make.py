@@ -9,7 +9,7 @@ else:
   name = name.split(".")
 
   nasm = "nasm -f elf -o " + name[0] + ".o" + " " + name[0] + ".asm"
-  ld = "ld -m elf_i386 -o " + name[0] + " " + name[0] + ".o"
+  ld = "ld -m elf_i386 -o " + name[0] + " " + name[0] + ".o io.o"
 
   os.system(nasm)
   os.system(ld)

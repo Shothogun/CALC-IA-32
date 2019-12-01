@@ -1,4 +1,3 @@
-
 ;  ============== Useful Macros ==================
 ;  ===============================================
 
@@ -73,6 +72,14 @@ D10_Result:
   add esp, 8
 %endmacro
 
+
+%macro Inc64 2
+  add %2, 1         ; Add low order 32-bits
+  adc %1, 0         ; Add high order 32-bits, and the carry if there was one
+%endmacro
+
+
+
 section .data
 global _start
 
@@ -128,6 +135,9 @@ result_message_size   EQU $-result_message
 
 %define NUMBER              [EBP+8]
 
+%define N64_H               [EBP+12]
+%define N64_L               [EBP+8]
+
 section .bss
 NAME                  resb        30
 DEBUG                 resd        1
@@ -135,8 +145,8 @@ DEBUG                 resd        1
 CHAR                  resb        1
 CHAR_SIZE             EQU         1
 
-BUFFER32              resb        11
-BUFFER32_SIZE         EQU         11
+BUFFER32              resb        12
+BUFFER32_SIZE         EQU         12
 
 BUFFER64              resb        21
 BUFFER64_SIZE         EQU         21
@@ -220,9 +230,25 @@ Sub:
   jmp Menu
 
 Mult:
+
   ReadOp eax, ebx
+  push eax
+  push ebx
+  push result_message
+  push result_message_size
+  call Print_String
+  add esp, 8 
+  pop ebx
+  pop eax
+
   imul ebx
-  ;Print result
+  
+  push edx
+  push eax
+  call Print_Int64
+  add esp, 8
+
+  NwLine
   WaitEnter
   jmp Menu
 
@@ -260,7 +286,6 @@ Print_String:
   push ebx
   push ecx
   push edx
-
   mov eax, 4
   mov ebx, 1
   mov ecx, PRINT_MESSAGE
@@ -414,7 +439,7 @@ RI32_Positive:
 
 ;  ========= PRINT INT 32 FUNCTION =======================
 ;  ==  Params:                                          ==
-;  ==                                                   ==
+;  ==  1.INT 32 value                                   ==
 ;  =======================================================
 
 Print_Int32:
@@ -501,6 +526,142 @@ PI32_Print:
   call Print_String
   add esp, 8
   popa
+  leave
+  ret
+
+
+;  ========= PRINT INT 64 FUNCTION =======================
+;  ==  Params:                                          ==
+;  ==  1.INT64 value                                    ==
+;  =======================================================
+
+Print_Int64:
+  enter 0,0
+  push eax
+  push ebx
+  push ecx
+  push edx
+  push edi
+  push esi
+
+  xor eax, eax
+  xor edx, edx
+  xor ecx, ecx
+  xor edi, edi
+  mov ebx, BUFFER64
+  ; Check if it's 0
+  mov eax, N64_H
+  cmp eax, 0
+  jne PI64_Negative
+  mov eax, N64_L
+  cmp eax, 0
+  je PI64_Cont3
+PI64_Negative:  
+  mov eax, N64_H
+  test eax, 0x80000000
+  je PI64_Conv_Loop
+  ; Convert to positive
+  
+  push edx
+  push eax
+  push dword N64_H
+  push dword N64_L
+  call ConvN2P64
+  mov N64_H, edx
+  mov N64_L, eax
+  pop eax
+  pop edx
+
+  ; Inserts the "-"
+  mov byte [ebx], 0x2d 
+  inc ebx
+  ; Enter 1 to indicate negative number
+  mov edi, 1
+
+PI64_Conv_Loop:
+
+  mov esi, 10
+  xor edx,edx
+  mov eax,N64_H
+  div esi
+  mov N64_H,eax       
+  mov eax,N64_L
+  div esi
+  mov N64_L,eax                    
+
+  ; Checks if the quotient is 0
+  cmp dword N64_H, 0
+  jne PI64_Cont
+  cmp dword N64_L, 0
+  jne PI64_Cont
+
+  ; Checks if the rest is 0
+  cmp edx, 0
+  je PI64_Cont3
+
+PI64_Cont:  
+  add edx, 0x30
+  push ecx
+
+; Shifts previous elements to the right 
+PI64_Shift_R:
+  cmp ecx, 0
+  je PI64_Cont2
+  mov byte dh, [ebx + ecx - 1]
+  mov byte [ebx + ecx], dh 
+  dec ecx
+  jmp PI64_Shift_R
+
+; Inserts the current element in the first position
+PI64_Cont2:  
+  mov byte [ebx], dl
+  pop ecx
+  inc ecx
+  jmp PI64_Conv_Loop
+
+PI64_Cont3:
+  cmp edi, 1
+  jne PI64_Print
+  ; If it is a negative number, set the pointer to the "-"
+  inc ecx
+  dec ebx
+PI64_Print:  
+  push ebx
+  push ecx
+  call Print_String
+  add esp, 8
+
+  pop esi
+  pop edi 
+  pop edx
+  pop ecx
+  pop ebx
+  pop eax
+
+  leave
+  ret 
+
+;  ========= CONV NEG TO POS FUNCTION ====================
+;  ==  Params:                                          ==
+;  ==  1.Negativ INT64 value                            ==
+;  =======================================================
+
+ConvN2P64: 
+  enter 0,0
+  push edi
+  push esi
+
+  mov edx, [ebp+12]
+  mov eax, [ebp+8]
+  mov edi, 0
+  mov esi, 0
+  sub edi, eax          ; Subtract low order 32-bits, borrow reflected in CF
+  sbb esi, edx          ; Subtract high order 32-bits, and the borrow if there was one
+  mov edx, esi
+  mov eax, edi
+
+  pop esi
+  pop edi
   leave
   ret
 
