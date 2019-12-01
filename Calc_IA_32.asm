@@ -1,3 +1,78 @@
+
+;  ============== Useful Macros ==================
+;  ===============================================
+
+; Performs an integer division by 10 using subtractions.
+; The first argument is the dividend and this is where the quotient is stored.
+; In the second argument the rest of the division is stored.
+
+%macro Div10 2
+  push ecx
+  xor ecx, ecx
+
+D10_Sub_Loop:
+  cmp %2, 10
+  jl D10_Result
+
+D10_Sub:
+  sub %2, 10
+  inc ecx
+  cmp %2, 0
+  jnz D10_Sub_Loop
+
+D10_Result:  
+  mov %1, %2
+  mov %2, ecx
+  pop ecx
+%endmacro
+
+; Ask for two arguments for user and store in parameters 1 and 2
+
+%macro ReadOp 2
+  push op1_message
+  push op1_message_size
+  call Print_String
+  add esp, 8 
+
+  call Read_Int32
+
+  push eax
+  push op2_message
+  push op2_message_size
+  call Print_String
+  add esp, 8 
+  call Read_Int32
+  mov %2, eax
+  pop %1
+%endmacro
+
+; Skip a line
+%macro NwLine 0
+  push NL
+  push NL_SIZE
+  call Print_String
+  add esp, 8  
+%endmacro
+
+; Print the result of an operation stored in the parameter
+%macro PrintResult 1
+  push %1
+  push result_message
+  push result_message_size
+  call Print_String
+  add esp, 8 
+  call Print_Int32
+  NwLine
+%endmacro
+
+; Wait for user to press enter button
+%macro WaitEnter 0
+  push CHAR
+  push CHAR_SIZE
+  call Read_String
+  add esp, 8
+%endmacro
+
 section .data
 global _start
 
@@ -5,14 +80,13 @@ global _start
 ;  ===============================================
 NEGATIVE_BIT          EQU 1
 
-
 SPACE                 db  " ", 0h
 SPACE_SIZE            EQU $-SPACE
 
 NL                    db  0dh, 0ah, 0h
 NL_SIZE               EQU  $-NL
 
-hello_message         db "Insert your name please:", 0h
+hello_message         db "Por favor digite seu nome:", 0h
 hello_message_size    EQU $-hello_message
 
 hello                 db "Olá, "
@@ -22,6 +96,25 @@ welcome               db ", bem-vindo ao programa de CALC IA-32"
 welcome_size          EQU $-welcome
 
 NAME_SIZE             EQU 30
+
+menu_message          db "ESCOLHA UMA OPÇÃO:", 0ah, 0dh,
+                      db "- 1: SOMA", 0ah, 0dh,
+                      db "- 2: SUBSTRAÇÃO", 0ah, 0dh,
+                      db "- 3: MULTIPLICAÇÃO", 0ah, 0dh,
+                      db "- 4: DIVISÂO", 0ah, 0dh,
+                      db "- 5: MOD", 0ah, 0dh,
+                      db "- 6: SAIR", 0ah, 0dh
+
+menu_message_size     EQU $-menu_message
+
+op1_message           db "Por favor digite o primeiro operando:", 0ah, 0dh
+op1_message_size      EQU $-op1_message
+
+op2_message           db "Por favor digite o segundo operando:", 0ah, 0dh
+op2_message_size      EQU $-op2_message
+
+result_message        db "Resultado:", 0ah, 0dh
+result_message_size   EQU $-result_message
 
 ;  ============== Arguments Alias ==============
 ;  =============================================
@@ -33,75 +126,132 @@ NAME_SIZE             EQU 30
 
 %define PRINT_INT           [EBP+8]
 
+%define NUMBER              [EBP+8]
+
 section .bss
 NAME                  resb        30
 DEBUG                 resd        1
 
-BUFFER32                resb        11
-BUFFER32_SIZE           EQU 11
+CHAR                  resb        1
+CHAR_SIZE             EQU         1
 
-BUFFER64                resb        21
-BUFFER64_SIZE           EQU 21
+BUFFER32              resb        11
+BUFFER32_SIZE         EQU         11
+
+BUFFER64              resb        21
+BUFFER64_SIZE         EQU         21
 
 section .text
 _start:
-; Ask user name
-push hello_message
-push hello_message_size
-call Print_String
-add esp, 8  
+  ; Ask user name
+  push hello_message
+  push hello_message_size
+  call Print_String
+  add esp, 8  
+  NwLine
 
-push NL
-push NL_SIZE
-call Print_String
-add esp, 8  
+  ; Read user name
+  push NAME
+  push NAME_SIZE
+  call Read_String
+  add esp, 4 
 
-; Read user name
-push NAME
-push NAME_SIZE
-call Read_String
-add esp, 4 
+  ; Ask user name
+  ; push NAME
+  ; push NAME_SIZE
+  ; call Print_String
+  ; add esp, 8  
 
-; Ask user name
-; push NAME
-; push NAME_SIZE
-; call Print_String
-; add esp, 8  
+  ; push NL
+  ; push NL_SIZE
+  ; call Print_String
+  ; add esp, 8
 
-; push NL
-; push NL_SIZE
-; call Print_String
-; add esp, 8
+  ; Hello Message
+  push hello
+  push hello_size
+  call Print_String
+  add esp, 8  
 
-; Hello Message
-push hello
-push hello_size
-call Print_String
-add esp, 8  
+  push NAME
+  push NAME_SIZE
+  call Print_String
+  add esp, 8  
 
-push NAME
-push NAME_SIZE
-call Print_String
-add esp, 8  
+  push welcome
+  push welcome_size
+  call Print_String
+  add esp, 8 
+  NwLine
+  NwLine
 
-push welcome
-push welcome_size
-call Print_String
-add esp, 8 
+Menu:
+  push menu_message
+  push menu_message_size
+  call Print_String
+  NwLine
 
-push NL
-push NL_SIZE
-call Print_String
-add esp, 8 
+  call Read_Int32
+  cmp eax, 1 
+  je Add
+  cmp eax, 2
+  je Sub
+  cmp eax, 3
+  je Mult
+  cmp eax, 4
+  je Div
+  cmp eax, 5
+  je Mod
+  ; Default or option 6, exit
+  jmp Return
+
+Add:
+  ReadOp eax, ebx
+  add eax, ebx
+  PrintResult eax
+  WaitEnter
+  jmp Menu
+
+Sub:
+  ReadOp eax, ebx
+  sub eax, ebx
+  PrintResult eax
+  WaitEnter
+  jmp Menu
+
+Mult:
+  ReadOp eax, ebx
+  imul ebx
+  ;Print result
+  WaitEnter
+  jmp Menu
+
+Div:
+  ReadOp eax, ebx
+  cdq
+  idiv ebx
+  PrintResult eax
+  WaitEnter
+  jmp Menu
+
+Mod:
+  ReadOp eax, ebx
+  cdq
+  idiv ebx
+  PrintResult edx
+  WaitEnter
+  jmp Menu
 
 ; Return 0
-mov eax, 1
-mov ebx, 0
-int 80h
+Return:
+  mov eax, 1
+  mov ebx, 0
+  int 80h
+
 
 ;  ========= PRINT STRING FUNCTION =======================
 ;  ==  Params:                                          ==
-;  ==   1. String beginning address(without newline)     ==
+;  ==   1. String beginning address(without newline)    ==
 ;  ==   2. String size                                  ==
 ;  =======================================================
 Print_String:
@@ -124,9 +274,9 @@ Print_String:
   leave
   ret
 
-;  ========= READ STRING FUNCTION =======================
+;  ========= READ STRING FUNCTION ========================
 ;  ==  Params:                                          ==
-;  ==   1. String input beginning address(without        ==
+;  ==   1. String input beginning address(without       ==
 ;  ==      newline)                                     ==
 ;  ==   2. Input String size                            ==
 ;  =======================================================
@@ -174,32 +324,32 @@ Finish_Read_String:
   leave
   ret
 
-;  ========= PRINT INT FUNCTION =======================
+;  ========= PRINT INT FUNCTION ==========================
 ;  ==  Params:                                          ==
 ;  ==   1. INT address input beginning address(without  ==
 ;  ==      newline)                                     ==
 ;  =======================================================
-Print_int:
-  enter 0,0
-  pusha
+; Print_int:
+;   enter 0,0
+;   pusha
 
-  ; EAX =====> Bytes from number(64 bits)
-  ; EBX =====> Pointer to the number bytes
-  ; ECX =====> Value at the pointer
-  mov eax,7
-  mov ebx, PRINT_INT
+;   ; EAX =====> Bytes from number(64 bits)
+;   ; EBX =====> Pointer to the number bytes
+;   ; ECX =====> Value at the pointer
+;   mov eax,7
+;   mov ebx, PRINT_INT
 
-  ; Gets the first MST byte
-  mov cl,[ebx]
+;   ; Gets the first MST byte
+;   mov cl,[ebx]
 
 
-  ; Check signal
+;   ; Check signal
   
 
-  ; Convert Binary to ASCII
-  popa
-  leave
-  ret
+;   ; Convert Binary to ASCII
+;   popa
+;   leave
+;   ret
 
 ;  ========= READ INT 32 FUNCTION ========================
 ;  ==  Params:                                          ==
@@ -267,7 +417,91 @@ RI32_Positive:
 ;  ==                                                   ==
 ;  =======================================================
 
-;  ========= PRINT INT 64 FUNCTION =======================
-;  ==  Params:                                          ==
-;  ==                                                   ==
-;  =======================================================
+Print_Int32:
+  enter 0,0
+  pusha
+
+  xor eax, eax
+  xor edx, edx
+  xor ecx, ecx
+  xor edi, edi
+  mov ebx, BUFFER32
+  mov eax, NUMBER
+
+  ; Check if it's 0
+  cmp eax, 0
+  jne PI32_Negative
+  mov dl, 0
+  add dl, 0x30
+  mov byte [ebx], dl
+  mov dl, [ebx]
+  inc ecx
+  jmp PI32_Cont3
+
+  ; Check if it's a negative number
+PI32_Negative:  
+  test eax, 0x80000000
+  je PI32_Positive
+  xor eax, eax
+  ; Convert to positive
+  sub eax, NUMBER
+  ; Inserts the "-"
+  mov byte [ebx], 0x2d 
+  inc ebx
+  ; Enter 1 to indicate negative number
+  mov edi, 1
+  jmp PI32_Conv_Loop
+
+PI32_Positive:
+  mov eax, NUMBER
+
+; Convert from binary to decimal ASCII
+
+PI32_Conv_Loop:
+
+  Div10 edx, eax
+  ; Checks if the quotient is 0
+  cmp eax, 0
+  jne PI32_Cont
+  ; Checks if the rest is 0
+  cmp edx, 0
+  je PI32_Cont3
+
+PI32_Cont:  
+  add edx, 0x30
+
+  push ecx
+
+; Shifts previous elements to the right 
+PI32_Shift_R:
+  cmp ecx, 0
+  je PI32_Cont2
+  mov byte dh, [ebx + ecx - 1]
+  mov byte [ebx + ecx], dh 
+  dec ecx
+  jmp PI32_Shift_R
+
+; Inserts the current element in the first position
+PI32_Cont2:  
+  mov byte [ebx], dl
+  pop ecx
+  inc ecx
+  jmp PI32_Conv_Loop
+
+PI32_Cont3:
+  cmp edi, 1
+  jne PI32_Print
+  ; If it is a negative number, set the pointer to the "-"
+  inc ecx
+  dec ebx
+
+PI32_Print:  
+  push ebx
+  push ecx
+  call Print_String
+  add esp, 8
+  popa
+  leave
+  ret
+
+
